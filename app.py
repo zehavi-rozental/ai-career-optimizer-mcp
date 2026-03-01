@@ -65,20 +65,21 @@ def extract_pdf_text(file) -> str:
 
 
 def get_ai_response(prompt: str, is_json: bool = False):
-    """פונקציה מרכזית לתקשורת עם Gemini"""
     if not api_key:
         return None
     genai.configure(api_key=api_key)
 
     config = {"response_mime_type": "application/json"} if is_json else None
-    model = genai.GenerativeModel("gemini-1.5-flash-latest", generation_config=config)
+    model = genai.GenerativeModel("gemini-1.5-flash")  # השתמשי בזה ליתר יציבות
 
     try:
         response = model.generate_content(prompt)
+        # בדיקה אם התגובה חסומה או ריקה
+        if not response or not response.text:
+            return "ERROR: השרת החזיר תשובה ריקה. ייתכן שיש חסימת אינטרנט (נטפרי)."
         return response.text
     except Exception as e:
-        return f"Error: {str(e)}"
-
+        return f"ERROR_CONNECTION: {str(e)}"
 
 # ==========================================
 # 3. SIDEBAR - SETTINGS & CV UPLOAD
