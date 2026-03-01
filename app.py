@@ -1,7 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
 import requests
-from bs4 import BeautifulSoup
 import json
 import PyPDF2
 from datetime import datetime
@@ -14,11 +12,11 @@ st.set_page_config(page_title="AI Career Optimizer Pro", page_icon="🎯", layou
 # משיכת המפתח מה-Secrets
 api_key = st.secrets.get("GOOGLE_API_KEY")
 
-# עיצוב CSS משודרג
+# עיצוב CSS משודרג - נשמר לטובת המראה המקצועי
 st.markdown("""
 <style>
     .main { background-color: #f8f9fa; }
-    .stButton>button { width: 100%; border-radius: 8px; height: 3em; background-color: #ff4b4b; color: white; border: none; }
+    .stButton>button { width: 100%; border-radius: 8px; height: 3em; background-color: #ff4b4b; color: white; border: none; font-weight: bold; }
     .stButton>button:hover { background-color: #ff3333; border: none; }
     .metric-card {
         background: white;
@@ -47,7 +45,7 @@ st.markdown("""
 
 
 # ==========================================
-# 2. CORE FUNCTIONS
+# 2. CORE FUNCTIONS (REST API VERSION)
 # ==========================================
 
 def extract_pdf_text(file) -> str:
@@ -65,21 +63,41 @@ def extract_pdf_text(file) -> str:
 
 
 def get_ai_response(prompt: str, is_json: bool = False):
+    """
+    פונקציה המשתמשת ב-REST API כדי לעקוף חסימות ספריות של נטפרי.
+    זוהי הדרך המקצועית ביותר לתקשורת עם AI בסביבה מסוננת.
+    """
     if not api_key:
         return None
-    genai.configure(api_key=api_key)
 
-    config = {"response_mime_type": "application/json"} if is_json else None
-    model = genai.GenerativeModel("gemini-1.5-flash")  # השתמשי בזה ליתר יציבות
+    # כתובת ה-API הישירה - נטפרי פותחים כתובות כאלו
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+
+    headers = {'Content-Type': 'application/json'}
+
+    # בניית המבנה הנדרש על ידי גוגל באופן ידני
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+
+    if is_json:
+        payload["generationConfig"] = {"response_mime_type": "application/json"}
 
     try:
-        response = model.generate_content(prompt)
-        # בדיקה אם התגובה חסומה או ריקה
-        if not response or not response.text:
-            return "ERROR: השרת החזיר תשובה ריקה. ייתכן שיש חסימת אינטרנט (נטפרי)."
-        return response.text
+        # שימוש ב-requests.post שהיא פקודה סטנדרטית
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+
+        result = response.json()
+
+        # חילוץ הטקסט מהמבנה המורכב של התשובה
+        return result['candidates'][0]['content']['parts'][0]['text']
+
     except Exception as e:
         return f"ERROR_CONNECTION: {str(e)}"
+
 
 # ==========================================
 # 3. SIDEBAR - SETTINGS & CV UPLOAD
@@ -105,16 +123,15 @@ with st.sidebar:
     if upload_method == "העלאת קובץ PDF":
         pdf_file = st.file_uploader("בחר קובץ PDF", type=['pdf'])
         if pdf_file:
-            # שיפור: חילוץ אוטומטי ללא צורך בכפתור נוסף
             with st.spinner("מחלץ טקסט מתוך ה-PDF..."):
                 text = extract_pdf_text(pdf_file)
                 if text and not text.startswith("Error"):
                     st.session_state.cv_text = text
                     st.success("הקובץ נקרא בהצלחה!")
                 else:
-                    st.error("לא הצלחנו לקרוא את הקובץ. נסה להדביק טקסט.")
+                    st.error("לא הצלחנו לקרוא את הקובץ. נסי להדביק טקסט.")
     else:
-        cv_input = st.text_area("הדבק את קורות החיים שלך כאן", height=200)
+        cv_input = st.text_area("הדבקי את קורות החיים שלך כאן", height=200)
         if st.button("שמור טקסט"):
             st.session_state.cv_text = cv_input
             st.success("הטקסט נשמר!")
@@ -124,30 +141,30 @@ with st.sidebar:
 # ==========================================
 
 st.title("🎯 AI Career Optimizer Pro")
-st.caption("נתח משרות, בצע אופטימיזציה לקורות החיים שלך ועבור את מערכות ה-ATS בקלות.")
+st.caption("ניתוח חכם, זיהוי פערים ואופטימיזציה אוטומטית למערכות ATS")
 
 if not api_key or not st.session_state.cv_text:
-    st.info("👈 התחילי בהעלאת קורות חיים והגדרת מפתח API בסרגל הצדי.")
+    st.info("👈 התחילי בהעלאת קורות חיים בסרגל הצדי כדי להתחיל.")
     st.stop()
 
 # שלב 1: הזנת משרה
-st.subheader("1. פרטי המשרה")
-job_desc = st.text_area("הדבק כאן את תיאור המשרה (Job Description)", height=150,
-                        placeholder="דרישות תפקיד, טכנולוגיות וכו'...")
+st.subheader("1. פרטי המשרה המבוקשת")
+job_desc = st.text_area("הדביקי כאן את תיאור המשרה (Job Description)", height=150,
+                        placeholder="העתיקי לכאן את דרישות התפקיד מלינקדאין או מכל אתר אחר...")
 
 if st.button("⚡ הרץ ניתוח ואופטימיזציה"):
     if not job_desc:
         st.error("אנא הכניסי תיאור משרה קודם.")
     else:
-        with st.spinner("ה-AI מנתח את הנתונים..."):
-            # פניה ל-AI לניתוח מדדים
+        with st.spinner("ה-AI מבצע השוואה עמוקה..."):
+            # פניה ל-AI לניתוח מדדים (REST API)
             analysis_prompt = f"""
             Analyze this CV against the Job Description. Return ONLY JSON:
             {{
                 "score": <0-100>,
                 "missing_skills": ["skill1", "skill2"],
                 "present_skills": ["skill1", "skill2"],
-                "action_plan": "Short strategy advice"
+                "action_plan": "Short strategy advice in Hebrew"
             }}
             CV: {st.session_state.cv_text}
             JD: {job_desc}
@@ -157,55 +174,58 @@ if st.button("⚡ הרץ ניתוח ואופטימיזציה"):
             # פניה ל-AI לאופטימיזציה של הטקסט
             optimize_prompt = f"""
             Rewrite the 'Professional Summary' and 'Experience' sections of this CV to match the JD.
-            Use <span class='cv-add'>text</span> for new keywords and <span class='cv-del'>text</span> for removed ones.
+            Use <span class='cv-add'>text</span> for additions and <span class='cv-del'>text</span> for deletions.
+            Language: Hebrew.
             CV: {st.session_state.cv_text}
             JD: {job_desc}
             """
             optimized_cv = get_ai_response(optimize_prompt)
 
-            try:
-                res = json.loads(analysis_res)
+            if "ERROR_CONNECTION" in analysis_res:
+                st.error(f"שגיאת תקשורת: {analysis_res}. ודאי שנטפרי פתחו את הכתובת.")
+            else:
+                try:
+                    res = json.loads(analysis_res)
 
-                # תצוגת תוצאות
-                st.divider()
-                col1, col2 = st.columns([1, 2])
+                    # תצוגת תוצאות ויזואלית
+                    st.divider()
+                    col1, col2 = st.columns([1, 2])
 
-                with col1:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <p style="color: #666; margin-bottom: 5px;">ציון התאמה ATS</p>
-                        <p class="metric-value">{res['score']}%</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    with col1:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <p style="color: #666; margin-bottom: 5px;">ציון התאמה ATS</p>
+                            <p class="metric-value">{res['score']}%</p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                with col2:
-                    st.subheader("📝 תוכנית פעולה")
-                    st.write(res['action_plan'])
+                    with col2:
+                        st.subheader("📝 תוכנית פעולה")
+                        st.write(res['action_plan'])
 
-                # שיפור משמעותי: ענן מילות מפתח חסרות
-                st.subheader("🔍 מילות מפתח קריטיות שחסרות לך")
-                kw_html = ""
-                for kw in res['missing_skills']:
-                    kw_html += f'<span class="keyword-tag">{kw}</span>'
-                st.markdown(kw_html, unsafe_allow_html=True)
+                    # ענן מילות מפתח חסרות
+                    st.subheader("🔍 מילות מפתח שחסרות בקורות החיים שלך")
+                    kw_html = "".join([f'<span class="keyword-tag">{kw}</span>' for kw in res['missing_skills']])
+                    st.markdown(kw_html, unsafe_allow_html=True)
 
-                # תצוגת קורות החיים המעודכנים
-                st.divider()
-                st.subheader("📝 הצעה לקורות חיים אופטימליים")
-                st.caption("השתמשי בשינויים המסומנים כדי לשפר את סיכויי הקבלה שלך:")
-                st.markdown(
-                    f'<div style="background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd;">{optimized_cv}</div>',
-                    unsafe_allow_html=True)
+                    # תצוגת קורות החיים המעודכנים
+                    st.divider()
+                    st.subheader("📝 הצעה לשכתוב אופטימלי")
+                    st.caption("השינויים המסומנים יעזרו לך לעבור את סינון ה-ATS:")
+                    st.markdown(
+                        f'<div style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; line-height: 1.6;">{optimized_cv}</div>',
+                        unsafe_allow_html=True)
 
-                # שמירה להיסטוריה
-                st.session_state.job_history.append(
-                    {"date": datetime.now().strftime("%d/%m %H:%M"), "score": res['score']})
+                    # שמירה להיסטוריה
+                    st.session_state.job_history.append(
+                        {"date": datetime.now().strftime("%d/%m %H:%M"), "score": res['score']})
 
-            except Exception as e:
-                st.error(f"שגיאה בעיבוד הנתונים: {e}")
+                except Exception as e:
+                    st.error(f"שגיאה בעיבוד נתוני ה-AI: {e}")
 
-# היסטוריה
+# היסטוריה ויזואלית
 if st.session_state.job_history:
     st.divider()
-    st.subheader("📜 היסטוריית ניתוחים")
-    st.line_chart([x['score'] for x in st.session_state.job_history])
+    st.subheader("📜 גרף שיפור ביצועים")
+    scores = [x['score'] for x in st.session_state.job_history]
+    st.line_chart(scores)
