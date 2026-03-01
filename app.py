@@ -63,19 +63,16 @@ def extract_pdf_text(file) -> str:
 
 
 def get_ai_response(prompt: str, is_json: bool = False):
-    """
-    פונקציה המשתמשת ב-REST API כדי לעקוף חסימות ספריות של נטפרי.
-    זוהי הדרך המקצועית ביותר לתקשורת עם AI בסביבה מסוננת.
-    """
     if not api_key:
-        return None
+        return "שגיאה: חסר מפתח API"
 
-    # כתובת ה-API הישירה - נטפרי פותחים כתובות כאלו
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # כתובת מעודכנת - הסרת ה-generateContent מה-URL והעברה למבנה סטנדרטי
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
+    # הוספת המפתח כפרמטר ולא כחלק מהנתיב
+    params = {'key': api_key}
     headers = {'Content-Type': 'application/json'}
 
-    # בניית המבנה הנדרש על ידי גוגל באופן ידני
     payload = {
         "contents": [{
             "parts": [{"text": prompt}]
@@ -86,18 +83,18 @@ def get_ai_response(prompt: str, is_json: bool = False):
         payload["generationConfig"] = {"response_mime_type": "application/json"}
 
     try:
-        # שימוש ב-requests.post שהיא פקודה סטנדרטית
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
+        # שליחת הבקשה עם params בנפרד
+        response = requests.post(url, headers=headers, json=payload, params=params, timeout=30)
+
+        # אם עדיין יש שגיאה, ננסה להבין מה נטפרי מחזירים
+        if response.status_code != 200:
+            return f"שגיאת תקשורת ({response.status_code}): {response.text}"
 
         result = response.json()
-
-        # חילוץ הטקסט מהמבנה המורכב של התשובה
         return result['candidates'][0]['content']['parts'][0]['text']
 
     except Exception as e:
-        return f"ERROR_CONNECTION: {str(e)}"
-
+        return f"שגיאה בחיבור: {str(e)}"
 
 # ==========================================
 # 3. SIDEBAR - SETTINGS & CV UPLOAD
