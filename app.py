@@ -11,12 +11,14 @@ from utils.docx_generator import create_improved_docx
 st.set_page_config(page_title="AI Career Optimizer Pro", page_icon="🎯", layout="wide")
 
 # ==========================================
-# 2. טעינת עיצוב (Load CSS)
+# 2. טעינת עיצוב (Load CSS - Safe Loading)
 # ==========================================
 css_path = os.path.join("assets", "style.css")
 if os.path.exists(css_path):
     with open(css_path, encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+else:
+    st.info("Style file loading...") # הודעה שקטה במקום קריסה אם הקובץ חסר
 
 # ==========================================
 # 3. אתחול משתני מערכת (Session State)
@@ -51,11 +53,11 @@ query = col1.text_input("What role are we looking for?", placeholder="e.g. מנ�
 
 if col2.button("🔎 Search Jobs"):
     with st.spinner("Searching for opportunities..."):
-        # קריאה למחלקה מתוך services/google_search.py
+        # קריאה לשירות החיפוש
         results = GoogleSearchService.search_jobs(query)
         st.session_state.search_results = results
 
-# הצגת תוצאות החיפוש
+# הצגת תוצאות
 if st.session_state.search_results:
     for i, item in enumerate(st.session_state.search_results):
         with st.container():
@@ -67,7 +69,7 @@ if st.session_state.search_results:
             """, unsafe_allow_html=True)
             if st.button(f"Analyze Job #{i+1}", key=f"select_{i}"):
                 st.session_state.job_desc = item['snippet']
-                st.success("Job details captured! Scroll down for analysis.")
+                st.success("Job details captured!")
 
 st.divider()
 
@@ -77,43 +79,25 @@ job_input = st.text_area("Job Description:", value=st.session_state.job_desc, he
 
 if st.button("⚡ Run Deep ATS Analysis"):
     if job_input:
-        with st.spinner("AI is analyzing the fit..."):
-            analysis_prompt = f"""
-            Analyze this CV against the Job Description. 
-            CV: {st.session_state.cv_text[:3000]}
-            JD: {job_input}
-            Return JSON with: 'score' (0-100), 'missing_skills' (list), 'action_plan' (Hebrew text).
-            """
-            res = AIService.get_response(analysis_prompt)
+        with st.spinner("AI is analyzing..."):
+            prompt = f"CV: {st.session_state.cv_text[:3000]} Job: {job_input}. Return JSON with 'score', 'missing_skills', 'action_plan'."
+            res = AIService.get_response(prompt)
             if res:
                 c1, c2 = st.columns([1, 2])
                 c1.metric("Match Score", f"{res['score']}%")
                 c2.write(f"**Action Plan:** {res['action_plan']}")
                 st.write("**Missing Keywords:**")
                 st.markdown(" ".join([f'<span class="keyword-tag">{kw}</span>' for kw in res['missing_skills']]), unsafe_allow_html=True)
-            else:
-                st.error("Analysis failed. Please try again.")
 
 st.divider()
 
-# --- שלב 4: הורדת קובץ Word משופר ---
+# --- שלב 4: הורדת קובץ Word ---
 st.subheader("📝 Step 4: Download Tailored CV")
 if st.button("🪄 Generate Word Document"):
-    if not job_input:
-        st.warning("Please provide a job description first.")
-    else:
-        with st.spinner("Optimizing your CV for this role..."):
-            tailor_prompt = f"""
-            Compare CV: {st.session_state.cv_text[:2000]} to Job: {job_input}. 
-            Rewrite the CV professionally. Return JSON with 'diff' (list of [text, status]) and 'explanation'.
-            Status options: 'keep', 'add' (for improvements), 'remove' (for unnecessary parts).
-            """
-            res = AIService.get_response(tailor_prompt)
+    if job_input:
+        with st.spinner("Creating your Word file..."):
+            prompt = f"Tailor this CV to the job. Return JSON with 'diff' (list of [text, status]) and 'explanation'."
+            res = AIService.get_response(prompt)
             if res:
                 doc_file = create_improved_docx(res)
-                st.download_button(
-                    label="📥 Download Word File",
-                    data=doc_file,
-                    file_name="Tailored_CV.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                st.download_button("📥 Download Word File", data=doc_file, file_name="Tailored_CV.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
