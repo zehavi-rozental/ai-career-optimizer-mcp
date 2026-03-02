@@ -1,6 +1,7 @@
 import requests
 import json
 import streamlit as st
+import certifi
 
 
 class AIService:
@@ -20,7 +21,13 @@ class AIService:
         }
 
         try:
-            res = requests.post(url, json=payload, params={'key': api_key}, timeout=30)
+            res = requests.post(
+                url,
+                json=payload,
+                params={'key': api_key},
+                timeout=30,
+                verify=certifi.where()  # Fix SSL certificate issue
+            )
             res.raise_for_status()
             return json.loads(res.json()['candidates'][0]['content']['parts'][0]['text'])
         except Exception as e:
