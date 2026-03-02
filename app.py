@@ -35,7 +35,6 @@ st.markdown("""
         background-color: #ffeaea; color: #ff4b4b; font-weight: 600; border: 1px solid #ffcccc;
     }
     .cv-add { color: #28a745; font-weight: bold; background-color: #e6ffed; padding: 2px 4px; border-radius: 4px; }
-    .cv-del { color: #dc3545; text-decoration: line-through; background-color: #fce8e8; padding: 2px 4px; border-radius: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -54,18 +53,22 @@ def extract_pdf_text(file):
 
 def google_search_jobs(query):
     """חיפוש משרות חי באמצעות Google Custom Search API"""
+    if not query: return []
     url = "https://www.googleapis.com/customsearch/v1"
     params = {
         'q': query,
         'key': api_key,
         'cx': search_id,
-        'num': 5  # מביא את 5 התוצאות הראשונות
+        'num': 5
     }
     try:
         response = requests.get(url, params=params, timeout=20)
+        if response.status_code != 200:
+            st.error(f"שגיאת גוגל: {response.status_code}")
+            return []
         return response.json().get('items', [])
     except Exception as e:
-        st.error(f"שגיאת חיפוש: {e}")
+        st.error(f"שגיאת חיבור לחיפוש: {e}")
         return []
 
 
@@ -88,23 +91,18 @@ def get_ai_response(prompt: str, is_json: bool = False):
 
 
 # ==========================================
-# 3. ניהול מצב האפליקציה (Session State)
+# 3. ניהול זיכרון (Session State)
 # ==========================================
 if "cv_text" not in st.session_state: st.session_state.cv_text = ""
 if "job_desc" not in st.session_state: st.session_state.job_desc = ""
 if "search_results" not in st.session_state: st.session_state.search_results = []
 
 # ==========================================
-# 4. סרגל צדי (העלאת קבצים)
+# 4. סרגל צדי
 # ==========================================
 with st.sidebar:
     st.title("⚙️ הגדרות")
-    if api_key and search_id:
-        st.success("מפתחות API זוהו ✅")
-
-    st.divider()
-    st.subheader("📄 שלב 1: העלאת קורות חיים")
-    pdf_file = st.file_uploader("בחרי קובץ PDF", type=['pdf'])
+    pdf_file = st.file_uploader("📄 שלב 1: העלאת קורות חיים", type=['pdf'])
     if pdf_file:
         with st.spinner("מחלץ טקסט..."):
             st.session_state.cv_text = extract_pdf_text(pdf_file)
@@ -114,56 +112,57 @@ with st.sidebar:
 # 5. ממשק ראשי
 # ==========================================
 st.title("🎯 AI Career Optimizer Pro")
-st.caption("חיפוש משרות חי, ניתוח התאמה ושכתוב אוטומטי")
 
 if not st.session_state.cv_text:
     st.info("👈 התחילי בהעלאת קורות חיים בסרגל הצדי.")
     st.stop()
 
-# --- שלב החיפוש (Live Search) ---
+# --- שלב החיפוש ---
 st.subheader("🔍 שלב 2: מציאת משרה")
 col1, col2 = st.columns([3, 1])
 search_query = col1.text_input("איזו משרה נחפש?", placeholder="למשל: מנהלת משרד תל אביב")
-search_linkedin = st.checkbox("חפשי רק בלינקדאין (לתוצאות מסודרות)", value=True)
+search_linkedin = st.checkbox("חפשי רק בלינקדאין (מומלץ)", value=True)
 
 if col2.button("🔎 חפשי משרות"):
-    with st.spinner("סורק את הרשת..."):
-        final_q = f"{search_query} site:linkedin.com/jobs" if search_linkedin else f"{search_query} משרות דרושים"
-        st.session_state.search_results = google_search_jobs(final_q)
+    if not search_query:
+        st.warning("בבקשה כתבי מה לחפש.")
+    else:
+        with st.spinner("סורק את הרשת..."):
+            final_q = f"{search_query} site:linkedin.com/jobs" if search_linkedin else f"{search_query} משרות"
+            st.session_state.search_results = google_search_jobs(final_q)
 
-# הצגת תוצאות חיפוש
+# הצגת תוצאות חיפוש (רק אם קיימות בזיכרון)
 if st.session_state.search_results:
-    st.write("תוצאות שמצאתי עבורך:")
-    for item in st.session_state.search_results:
+    st.write("תוצאות חיפוש:")
+    for i, item in enumerate(st.session_state.search_results):
         with st.container():
             st.markdown(f"""
             <div class="job-card">
                 <h4 style="margin:0;"><a href="{item['link']}" target="_blank">{item['title']}</a></h4>
-                <p style="font-size:0.9em; color:#666; margin-top:5px;">{item['snippet']}</p>
+                <p style="font-size:0.85em; color:#555;">{item['snippet']}</p>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("בצעי ניתוח למשרה זו", key=item['link']):
+            if st.button(f"בחרי משרה #{i + 1}", key=f"btn_{i}"):
                 st.session_state.job_desc = item['snippet']
-                st.success("תיאור המשרה הוזן למערכת הניתוח!")
+                st.rerun()
 
 st.divider()
 
-# --- שלב הניתוח והאופטימיזציה ---
-st.subheader("📊 שלב 3: ניתוח ואופטימיזציה")
-job_input = st.text_area("תיאור המשרה לניתוח (הוזן אוטומטית או הדביקי כאן):",
-                         value=st.session_state.job_desc, height=150)
+# --- שלב הניתוח ---
+st.subheader("📊 שלב 3: ניתוח והתאמה")
+job_input = st.text_area("תיאור המשרה שנבחרה:", value=st.session_state.job_desc, height=150)
 
-if st.button("⚡ הרץ ניתוח עמוק"):
+if st.button("⚡ הרץ ניתוח ATS"):
     if not job_input:
-        st.error("אנא בחרי משרה מהחיפוש או הדביקי תיאור משרה.")
+        st.error("לא נבחרה משרה לניתוח.")
     else:
-        with st.spinner("ה-AI מנתח התאמה..."):
-            # ניתוח מדדים
+        with st.spinner("ה-AI מבצע השוואה..."):
+            # ניתוח
             analysis_prompt = f"Analyze CV: {st.session_state.cv_text} vs Job: {job_input}. Return ONLY JSON: {{'score': 0-100, 'missing_skills': [], 'action_plan': 'Hebrew advice'}}"
             analysis_res = get_ai_response(analysis_prompt, is_json=True)
 
             # שכתוב
-            opt_prompt = f"Rewrite CV sections to match Job: {job_input}. Use <span class='cv-add'>text</span> for additions. Language: Hebrew. CV: {st.session_state.cv_text}"
+            opt_prompt = f"Rewrite CV summary to match Job: {job_input}. Use <span class='cv-add'>text</span> for additions. Language: Hebrew. CV: {st.session_state.cv_text}"
             optimized_cv = get_ai_response(opt_prompt)
 
             try:
@@ -182,9 +181,9 @@ if st.button("⚡ הרץ ניתוח עמוק"):
                             unsafe_allow_html=True)
 
                 st.divider()
-                st.subheader("📝 הצעה לשכתוב אופטימלי")
+                st.subheader("📝 הצעה לשכתוב")
                 st.markdown(
-                    f'<div style="background:white; padding:25px; border:1px solid #ddd; border-radius:10px;">{optimized_cv}</div>',
+                    f'<div style="background:white; padding:20px; border:1px solid #ddd; border-radius:10px;">{optimized_cv}</div>',
                     unsafe_allow_html=True)
-            except Exception as e:
-                st.error("חלה שגיאה בעיבוד הנתונים. ודאי שנטפרי מאפשרים את התשובה.")
+            except:
+                st.error("ה-AI החזיר תשובה בפורמט לא תקין. נסי שוב.")
