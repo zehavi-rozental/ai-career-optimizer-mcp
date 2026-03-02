@@ -8,7 +8,12 @@ class GoogleSearchService:
         api_key = st.secrets.get("GOOGLE_API_KEY")
         search_id = st.secrets.get("SEARCH_ENGINE_ID")
 
-        if not query: return []
+        if not api_key or not search_id:
+            st.error("❌ API keys not configured. Please update .streamlit/secrets.toml with GOOGLE_API_KEY and SEARCH_ENGINE_ID")
+            return []
+
+        if not query:
+            return []
 
         url = "https://www.googleapis.com/customsearch/v1"
         params = {'q': query, 'key': api_key, 'cx': search_id, 'num': 5}

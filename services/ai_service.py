@@ -6,7 +6,12 @@ import streamlit as st
 class AIService:
     @staticmethod
     def get_response(prompt, is_json=True):
-        api_key = st.secrets.get("GOOGLE_API_KEY")
+        api_key = st.secrets.get("GEMINI_API_KEY")
+
+        if not api_key:
+            st.error("❌ GEMINI_API_KEY not configured. Please update .streamlit/secrets.toml with your Gemini API key")
+            return None
+
         url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
 
         payload = {
