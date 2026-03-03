@@ -1,6 +1,11 @@
 import requests
 import logging
 import certifi
+import warnings
+import urllib3
+
+# Suppress SSL warnings (temporary)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +48,7 @@ class GoogleSearchService:
                 params=params,
                 headers=headers,
                 timeout=15,
-                verify=certifi.where()  # Fix SSL certificate issue
+                verify=False  # Disable SSL verification (temporary workaround)
             )
             logger.debug(f"API Response Status: {response.status_code}")
 

@@ -2,6 +2,11 @@ import requests
 import json
 import streamlit as st
 import certifi
+import warnings
+import urllib3
+
+# Suppress SSL warnings (temporary)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class AIService:
@@ -26,7 +31,7 @@ class AIService:
                 json=payload,
                 params={'key': api_key},
                 timeout=30,
-                verify=certifi.where()  # Fix SSL certificate issue
+                verify=False  # Disable SSL verification (temporary workaround)
             )
             res.raise_for_status()
             return json.loads(res.json()['candidates'][0]['content']['parts'][0]['text'])
