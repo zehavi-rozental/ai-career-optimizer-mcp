@@ -14,8 +14,9 @@ class AIService:
             st.error("Missing API Key in Secrets!")
             return None
 
-        # כתובת מעודכנת ויציבה
-        url = f"[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=){api_key}"
+        # בנייה נקייה של הכתובת ללא רווחים
+        base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+        url = f"{base_url}?key={api_key}".strip()
 
         headers = {'Content-Type': 'application/json'}
         payload = {
@@ -26,13 +27,18 @@ class AIService:
             payload["generationConfig"] = {"response_mime_type": "application/json"}
 
         try:
-            res = requests.post(url, json=payload, headers=headers, timeout=30, verify=False)
+            # שימוש ב-Session כדי למנוע בעיות חיבור
+            session = requests.Session()
+            res = session.post(url, json=payload, headers=headers, timeout=30, verify=False)
             res.raise_for_status()
 
             raw_response = res.json()
             text_out = raw_response['candidates'][0]['content']['parts'][0]['text']
 
-            return json.loads(text_out) if is_json else text_out
+            if is_json:
+                clean_text = text_out.replace('```json', '').replace('```', '').strip()
+                return json.loads(clean_text)
+            return text_out
         except Exception as e:
             st.error(f"AI Error: {str(e)}")
             return None
