@@ -58,16 +58,23 @@ if st.button("🚀 נתח ושפר את קורות החיים שלי", type="pri
         st.error("חסר תיאור משרה או קורות חיים!")
     else:
         with st.spinner("Gemini מנתח וכותב עבורך גרסה משופרת..."):
+            # פרום מעודכן למניעת שגיאות 400
             prompt = f"""
-            Analyze the following CV against the Job Description.
-            Return a JSON with:
-            1. 'score': int (0-100)
-            2. 'missing_skills': list of strings
-            3. 'action_plan': string
-            4. 'improved_sections': list of objects with 'original', 'improved', 'explanation'.
+            You are a career expert. Analyze this CV and Job Description.
+            Respond ONLY with a valid JSON object. Do not include markdown formatting like ```json.
 
-            CV: {st.session_state.cv_text[:3000]}
-            Job Description: {job_input}
+            Structure:
+            {{
+              "score": (int 0-100),
+              "missing_skills": ["skill1", "skill2"],
+              "action_plan": "overall advice",
+              "improved_sections": [
+                {{"original": "old text", "improved": "new text", "explanation": "why"}}
+              ]
+            }}
+
+            CV: {st.session_state.cv_text[:2000]}
+            Job: {job_input[:2000]}
             """
             res = AIService.get_response(prompt)
             if res:
