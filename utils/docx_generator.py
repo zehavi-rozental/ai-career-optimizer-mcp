@@ -1,28 +1,32 @@
 from docx import Document
-from docx.shared import RGBColor
-import io
+from io import BytesIO
 
 
-def create_improved_docx(diff_data):
+def create_improved_docx(original_text, improved_sections):
     doc = Document()
-    doc.add_heading('Improved CV - AI Career Optimizer', 0)
+    doc.add_heading('Improved Curriculum Vitae', 0)
 
-    doc.add_heading('Explanation of Changes:', level=1)
-    doc.add_paragraph(diff_data.get('explanation', 'Optimized for target job description.'))
+    doc.add_heading('AI Suggestions & Improvements', level=1)
+    for section in improved_sections:
+        p = doc.add_paragraph()
+        p.add_run(f"Reason: ").bold = True
+        p.add_run(section.get('explanation', ''))
 
-    doc.add_heading('Revised CV (Marked Version):', level=1)
-    p = doc.add_paragraph()
+        p = doc.add_paragraph()
+        p.add_run(f"Original: ").italic = True
+        p.add_run(section.get('original', ''))
 
-    for part, status in diff_data.get('diff', []):
-        run = p.add_run(part)
-        if status == 'add':
-            run.font.color.rgb = RGBColor(0, 128, 0)  # Green for additions
-            run.bold = True
-        elif status == 'remove':
-            run.font.color.rgb = RGBColor(255, 0, 0)  # Red for deletions
-            run.font.strike = True
+        p = doc.add_paragraph()
+        p.add_run(f"Improved Version: ").bold = True
+        p.add_run(section.get('improved', ''))
+        doc.add_paragraph("-" * 20)
 
-    bio = io.BytesIO()
-    doc.save(bio)
-    bio.seek(0)
-    return bio
+    doc.add_page_break()
+    doc.add_heading('Full Text Content', level=1)
+    doc.add_paragraph(original_text)
+
+    # שמירה לזיכרון (Buffer) במקום לקובץ פיזי
+    target = BytesIO()
+    doc.save(target)
+    target.seek(0)
+    return target
