@@ -1,11 +1,9 @@
 import requests
 import json
 import streamlit as st
-import certifi
-import warnings
 import urllib3
 
-# Suppress SSL warnings (temporary)
+# ביטול אזהרות SSL לטובת עבודה חלקה בנטפרי/שרתים מוגנים
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -13,28 +11,30 @@ class AIService:
     @staticmethod
     def get_response(prompt, is_json=True):
         api_key = st.secrets.get("GEMINI_API_KEY")
-
         if not api_key:
-            st.error("❌ GEMINI_API_KEY not configured. Please update .streamlit/secrets.toml with your Gemini API key")
+            st.error("Missing API Key in Secrets!")
             return None
 
-        url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
+        # עבודה ישירה מול ה-API ללא ספריות חיצוניות
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
 
+        headers = {'Content-Type': 'application/json'}
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"response_mime_type": "application/json"} if is_json else {}
+            "contents": [{"parts": [{"text": prompt}]}]
         }
 
+        if is_json:
+            payload["generationConfig"] = {"response_mime_type": "application/json"}
+
         try:
-            res = requests.post(
-                url,
-                json=payload,
-                params={'key': api_key},
-                timeout=30,
-                verify=False  # Disable SSL verification (temporary workaround)
-            )
+            # verify=False עוקף בעיות תעודת אבטחה אם קיימות
+            res = requests.post(url, json=payload, headers=headers, timeout=30, verify=False)
             res.raise_for_status()
-            return json.loads(res.json()['candidates'][0]['content']['parts'][0]['text'])
+
+            raw_response = res.json()
+            text_out = raw_response['candidates'][0]['content']['parts'][0]['text']
+
+            return json.loads(text_out) if is_json else text_out
         except Exception as e:
-            st.error(f"AI Service Error: {e}")
+            st.error(f"AI Error: {str(e)}")
             return None
