@@ -5,28 +5,34 @@ import streamlit as st
 class AIService:
     @staticmethod
     def analyze_job_match(resume_text, job_description):
-        # ניקוי מוחלט של מפתח ה-API
+        # ניקוי המפתח - קריטי למניעת שגיאת 400
         api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
+
         if not api_key:
-            st.error("Missing Gemini API Key in Secrets")
+            st.error("מפתח API חסר בהגדרות (Secrets)")
             return None
+
         try:
             genai.configure(api_key=api_key)
-            # שם המודל המדויק (ללא קידומת models/)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+
+            # הפתרון הסופי ל-404: שימוש בפרמטר model_name עם השם המדויק
+            model = genai.GenerativeModel(model_name='gemini-1.5-flash')
 
             prompt = f"""
-            נתחי את ההתאמה בין קורות החיים למשרה הבאה:
-            קורות חיים: {resume_text[:5000]}
-            תיאור משרה: {job_description[:5000]}
+            בתור מומחה גיוס טכנולוגי, נתחי את ההתאמה בין קורות החיים למשרה.
+            חשוב מאוד: בפרק המלצות לשיפור, עטפי כל ביטוי או מילה שמומלץ להוסיף בתגית הבאה:
+            <span style='color:#2ecc71; font-weight:bold;'>ביטוי</span>
 
-            מבנה התשובה:
-            1. מדד התאמה (0-100%).
-            2. הסבר קצר על רמת ההתאמה.
-            3. 3 נקודות חוזק.
-            4. 3 פערים מרכזיים.
-            5. המלצה לשיפור קורות החיים.
-            6. עטוף מילים לשיפור ב-<span style='color:#2ecc71; font-weight:bold;'>word</span>.
+            תיאור המשרה המלא: {job_description[:5000]}
+            קורות החיים: {resume_text[:4000]}
+
+            השיבי בעברית במבנה הבא:
+            SCORE: [מספר בין 0-100 בלבד]
+            ### 📊 מדד התאמה
+            [הסבר קצר]
+            ### ✅ נקודות חוזק
+            ### ⚠️ פערים מרכזיים
+            ### ✍️ המלצות לשיפור (השתמשי בצבע ירוק לביטויים להוספה)
             """
 
             response = model.generate_content(prompt)
