@@ -1,19 +1,15 @@
 import requests
 import streamlit as st
 
-
 class GoogleSearchService:
     @staticmethod
     def search_jobs(query):
-        api_key = st.secrets.get("SERPER_API_KEY", "").strip()
+        api_key = st.secrets.get("SERPER_API_KEY", "").strip().replace('"', '')
         if not api_key:
-            st.error("Missing SERPER_API_KEY")
             return []
 
         url = "https://google.serper.dev/search"
-
-        # שאילתה ממוקדת לאתרים הישראליים עם מילות מפתח של דרושים
-        search_query = f'"{query}" (דרוש OR דרושה OR משרה) site:alljobs.co.il OR site:jobinfo.co.il OR site:nisha.co.il OR site:gotfriends.co.il'
+        search_query = f'"{query}" משרה מלאה (AllJobs OR Jobinfo OR Nisha OR GotFriends)'
 
         payload = {"q": search_query, "gl": "il", "hl": "iw"}
         headers = {'X-API-KEY': api_key, 'Content-Type': 'application/json'}
@@ -21,8 +17,7 @@ class GoogleSearchService:
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=10)
             if response.status_code == 200:
-                results = response.json().get('organic', [])
-                return [{'title': r.get('title'), 'link': r.get('link'), 'snippet': r.get('snippet')} for r in results]
+                return response.json().get('organic', [])
             return []
         except:
             return []
