@@ -1,28 +1,33 @@
-import streamlit as st
+import urllib.parse
+
 
 class GoogleSearchService:
     @staticmethod
-    def search_jobs(role):
-        # יצירת רשימה של לוחות משרות רלוונטיים לפי התפקיד שהוקלד
-        # זה מדמה "סריקה" ומאפשר למשתמש לבחור מקור
-        platforms = [
+    def search_jobs(query):
+        clean_query = " ".join(query.split())
+        encoded_query = urllib.parse.quote(clean_query)
+
+        # בניית הקישורים לאתרים שהגדרת בלבד
+        results = [
             {
-                "title": f"משרות {role} ב-Drushim",
-                "link": f"https://www.drushim.co.il/jobs/search/{role}/",
-                "source": "דרושים",
-                "desc": f"צפי בכל משרות ה-{role} החדשות באתר דרושים."
-            },
-            {
-                "title": f"משרות {role} ב-AllJobs",
-                "link": f"https://www.alljobs.co.il/SearchResultsGuest.aspx?description={role}",
                 "source": "AllJobs",
-                "desc": f"חיפוש משרות {role} בלוח AllJobs."
+                "link": f"https://www.alljobs.co.il/SearchResultsGuest.aspx?keywords={encoded_query}",
+                "desc": f"משרות {clean_query} בלוח AllJobs"
             },
             {
-                "title": f"משרות {role} ב-LinkedIn",
-                "link": f"https://www.linkedin.com/jobs/search/?keywords={role}&location=Israel",
-                "source": "LinkedIn",
-                "desc": "משרות מרשת הלינקדאין בישראל."
+                "source": "GotFriends",
+                "link": f"https://www.gotfriends.co.il/jobs-list/?search={encoded_query}",
+                "desc": f"משרות הייטק ממוקדות ב-GotFriends"
+            },
+            {
+                "source": "Jobinfo",
+                "link": f"https://www.jobinfo.co.il/jobs?q={encoded_query}",
+                "desc": f"חיפוש משרות ב-Jobinfo"
+            },
+            {
+                "source": "Nisha",
+                "link": f"https://www.nisha.co.il/jobs?search={encoded_query}",
+                "desc": f"משרות דרך קבוצת נישה"
             }
         ]
-        return platforms
+        return results
