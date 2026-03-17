@@ -1,4 +1,7 @@
 streamlit
 requests
-google-generativeai>=0.7.2
+urllib3
 pypdf2
+python-docx
+pandas
+google-generativeai>=0.8.3

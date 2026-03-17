@@ -5,20 +5,16 @@ import streamlit as st
 class AIService:
     @staticmethod
     def analyze_job_match(resume_text, job_description):
-        # שליפת המפתח וניקוי שאריות תווים
-        api_key = st.secrets.get("GEMINI_API_KEY", "").replace('"', '').strip()
-
+        # שליפת המפתח עם ניקוי תווים מיותרים
+        api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '')
         if not api_key:
             st.error("Missing Gemini API Key in Secrets")
             return None
-
         try:
             # הגדרת המפתח בספרייה הרשמית
             genai.configure(api_key=api_key)
-
-            # שימוש בנתיב המלא - זה פותר את שגיאת ה-404
+            # שימוש בנתיב המלא של המודל
             model = genai.GenerativeModel('models/gemini-1.5-flash')
-
             prompt = f"""
             בתור מומחה גיוס, נתח את רמת ההתאמה בין קורות החיים למשרה.
             השב בעברית מקצועית:
@@ -32,7 +28,6 @@ class AIService:
             3. נקודות חוזק ופערים.
             4. המלצה לשיפור קורות החיים.
             """
-
             response = model.generate_content(prompt)
             return response.text
 
