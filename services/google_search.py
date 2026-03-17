@@ -5,12 +5,24 @@ import streamlit as st
 class GoogleSearchService:
     @staticmethod
     def search_jobs(query):
-        # משיכת המפתחות ללא רווחים מיותרים
         api_key = st.secrets.get("GOOGLE_API_KEY", "").strip()
         search_id = st.secrets.get("SEARCH_ENGINE_ID", "").strip()
 
-        if not api_key or not search_id:
-            st.error("Missing Search API keys in secrets.toml.")
+        url = "https://www.googleapis.com/customsearch/v1"
+        params = {'key': api_key, 'cx': search_id, 'q': query}
+
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            if response.status_code != 200:
+                # זה ידפיס לך בדיוק מה גוגל אומר!
+                error_detail = response.json().get('error', {}).get('message', 'Unknown Error')
+                st.error(f"גוגל מחזיר שגיאה: {error_detail} (קוד: {response.status_code})")
+                return []
+
+            items = response.json().get('items', [])
+            return items
+        except Exception as e:
+            st.error(f"שגיאת תקשורת: {e}")
             return []
 
         # השאילתה המדויקת שתביא לך משרות ולא "מלל"
