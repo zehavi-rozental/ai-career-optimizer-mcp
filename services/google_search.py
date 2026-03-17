@@ -4,29 +4,32 @@ import urllib.parse
 class GoogleSearchService:
     @staticmethod
     def search_jobs(query):
-        clean_query = " ".join(query.split())
+        clean_query = " ".join(query.strip().split())
         encoded_query = urllib.parse.quote(clean_query)
 
-        # בניית הקישורים לאתרים שהגדרת בלבד
+        # פונקציית עזר ליצירת קישור גוגל ממוקד לאתר ספציפי
+        def make_smart_link(site_domain):
+            return f"https://www.google.com/search?q=site:{site_domain}+{encoded_query}"
+
         results = [
             {
                 "source": "AllJobs",
-                "link": f"https://www.alljobs.co.il/SearchResultsGuest.aspx?keywords={encoded_query}",
-                "desc": f"משרות {clean_query} בלוח AllJobs"
+                "link": make_smart_link("alljobs.co.il"),
+                "desc": f"כל משרות {clean_query} מתוך AllJobs"
             },
             {
                 "source": "GotFriends",
-                "link": f"https://www.gotfriends.co.il/jobs-list/?search={encoded_query}",
-                "desc": f"משרות הייטק ממוקדות ב-GotFriends"
+                "link": make_smart_link("gotfriends.co.il"),
+                "desc": f"משרות הייטק ב-GotFriends"
             },
             {
                 "source": "Jobinfo",
-                "link": f"https://www.jobinfo.co.il/jobs?q={encoded_query}",
-                "desc": f"חיפוש משרות ב-Jobinfo"
+                "link": make_smart_link("jobinfo.co.il"),
+                "desc": f"משרות פיתוח ב-Jobinfo"
             },
             {
                 "source": "Nisha",
-                "link": f"https://www.nisha.co.il/jobs?search={encoded_query}",
+                "link": make_smart_link("nisha.co.il"),
                 "desc": f"משרות דרך קבוצת נישה"
             }
         ]
