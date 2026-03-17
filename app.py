@@ -40,26 +40,21 @@ if st.button("מצא לי משרות רלוונטיות", type="primary"):
 
 if st.session_state.search_results:
     st.write(f"### נמצאו {len(st.session_state.search_results)} משרות רלוונטיות:")
-    for i, job in enumerate(st.session_state.search_results):
-        with st.container(border=True):
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.markdown(f"#### {job.get('title')}")
-                # "וילון" שנפתח עם התיאור המלא
-                with st.expander("📖 קראי את תיאור המשרה המלא"):
-                    full_desc = job.get('snippet', 'אין תיאור זמין')
-                    st.write(full_desc)
-                    st.link_button("🔗 למקור המשרה", job.get('link', '#'))
-            with col2:
-                if st.button("בחר לניתוח 🎯", key=f"btn_{i}"):
-                    st.session_state.selected_job_description = job.get('snippet', '')
-                    st.toast("המשרה נבחרה!")
+    for i, job in enumerate(st.session_state.search_results[:10]):
+        with st.expander("📖 קראי את תיאור המשרה המלא"):
+            st.markdown(f"#### {job.get('title')}")
+            full_desc = job.get('snippet', 'אין תיאור זמין')
+            st.write(full_desc)
+            st.link_button("🔗 למקור המשרה", job.get('link', '#'))
+            if st.button("בחר לניתוח 🎯", key=f"btn_{i}"):
+                st.session_state.selected_job_description = job.get('snippet', '')
+                st.toast("המשרה נבחרה!")
 
 st.markdown("---")
 
 # שלב 3: ניתוח AI עם מד התאמה והורדה ל-Word
 st.subheader("📊 שלב 3: ניתוח התאמה ושיפור")
-job_input = st.text_area("תיאור המשרה שנבחרה:", value=st.session_state.selected_job_description, height=150)
+job_input = st.text_area("תיאור המשרה שנבחרה:", value=st.session_state.selected_job_description, height=300, max_chars=5000)
 
 if st.button("🚀 נתח ושפר בירוק", type="primary"):
     if job_input and st.session_state.cv_text:
@@ -75,7 +70,7 @@ if st.session_state.analysis_results:
         st.progress(score / 100)
 
     st.markdown("---")
-    st.write(st.session_state.analysis_results, unsafe_allow_html=True)
+    st.markdown(st.session_state.analysis_results, unsafe_allow_html=True)
 
     # הורדה ל-Word
     doc = Document()
