@@ -75,43 +75,16 @@ except Exception as e:
 
 # Step 3: Test Gemini API
 print("\n3️⃣ בדיקת Gemini API...")
+print("   ⚠️ בדיקה זו אינה רלוונטית - יש להשתמש בספרייה google-generativeai בלבד!")
 try:
-    import json
+    import google.generativeai as genai
 
-    gemini_url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
-
-    payload = {
-        "contents": [{
-            "parts": [{
-                "text": "תגיד שלום בעברית בקצרה מאוד"
-            }]
-        }],
-        "generationConfig": {"response_mime_type": "application/json"}
-    }
-
-    print("   שולח בקשה ל-Gemini...")
-    response = requests.post(
-        gemini_url,
-        json=payload,
-        params={'key': gemini_key},
-        timeout=15,
-        verify=certifi.where()
-    )
-
-    print(f"   Status: {response.status_code}")
-
-    if response.status_code == 200:
-        print(f"   ✅ Gemini API עובד!")
-        data = response.json()
-        if 'candidates' in data:
-            text = data['candidates'][0]['content']['parts'][0]['text']
-            print(f"      Response: {text[:50]}...")
-    else:
-        print(f"   ❌ שגיאה {response.status_code}")
-        print(f"      Response: {response.text[:200]}")
-
+    genai.configure(api_key=gemini_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content("תגיד שלום בעברית בקצרה מאוד")
+    print(f"   ✅ תשובת Gemini: {response.text}")
 except Exception as e:
-    print(f"   ❌ שגיאה בחיבור: {type(e).__name__}: {str(e)[:100]}")
+    print(f"   ❌ שגיאת Gemini: {str(e)}")
 
 # Step 4: Summary
 print("\n" + "=" * 70)
