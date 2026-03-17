@@ -1,23 +1,22 @@
 import streamlit as st
-import os
-import json
 from services.ai_service import AIService
 from services.google_search import GoogleSearchService
 from utils.pdf_processor import extract_text_from_pdf
 from utils.docx_generator import create_improved_docx
 
-# הגדרות דף -Layout רחב ומקצועי
+# 1. הגדרות דף
 st.set_page_config(page_title="AI Career Optimizer Pro", page_icon="🎯", layout="wide")
 
-# אתחול Session State
+# 2. אתחול Session State (הוספת משתנה למשרה שנבחרה)
 if "cv_text" not in st.session_state: st.session_state.cv_text = ""
 if "search_results" not in st.session_state: st.session_state.search_results = []
 if "analysis_results" not in st.session_state: st.session_state.analysis_results = None
+if "selected_job_description" not in st.session_state: st.session_state.selected_job_description = ""
 
 st.title("🎯 AI Career Optimizer Pro")
 st.markdown("---")
 
-# שלב 1: העלאת קורות חיים
+# שלב 1: העלאת קורות חיים (בסרגל הצד)
 with st.sidebar:
     st.header("📄 שלב 1: קורות חיים")
     pdf_file = st.file_uploader("העלי קובץ PDF", type=['pdf'])
@@ -26,67 +25,65 @@ with st.sidebar:
             text = extract_text_from_pdf(pdf_file)
             if text:
                 st.session_state.cv_text = text
-                st.success("✅ הקובץ נקלט בהצלחה")
+                st.success("✅ קורות החיים נטענו")
 
-# שלב 2: לוח משרות חכם (Smart Redirect Engine)
-st.subheader("🔍 שלב 2: איתור משרות חכם")
-st.info("המערכת מבצעת חיפוש ממוקד (Smart Site-Search) כדי להבטיח תוצאות רלוונטיות ללא שגיאות.")
-
+# שלב 2: פיד משרות אינטראקטיבי
+st.subheader("🔍 שלב 2: פיד משרות ממוקד")
 query = st.text_input("איזה תפקיד את מחפשת?", placeholder="למשל: Junior Full Stack Developer")
 
-if st.button("חפש משרות בכל המקורות", type="primary"):
+if st.button("מצא לי משרות רלוונטיות", type="primary"):
     if query:
-        with st.spinner("סורק אתרים..."):
+        with st.spinner("סורק אתרי גיוס ומאנדקס משרות..."):
             st.session_state.search_results = GoogleSearchService.search_jobs(query)
 
 if st.session_state.search_results:
-    st.write("### בחרי מקור לחיפוש ממוקד:")
-    # הגדרת אייקונים לכל אתר למראה מרשים
-    icons = {"AllJobs": "💼", "GotFriends": "🤝", "Jobinfo": "📊", "Nisha": "🎯"}
+    st.write(f"### נמצאו {len(st.session_state.search_results)} משרות רלוונטיות:")
 
-    cols = st.columns(4)
-    for i, item in enumerate(st.session_state.search_results):
-        with cols[i % 4]:
-            with st.container(border=True):
-                icon = icons.get(item['source'], "🌐")
-                st.markdown(f"#### {icon} {item['source']}")
-                st.caption(item['desc'])
-                st.link_button(f"חפש ב-{item['source']}", item['link'], use_container_width=True)
+    for i, job in enumerate(st.session_state.search_results):
+        with st.container(border=True):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.subheader(job['title'])
+                st.caption(f"📍 מקור: {job['display_link']}")
+                st.write(job['snippet'])
+            with col2:
+                # כפתור הקסם: מעביר את תוכן המשרה לשלב הבא
+                if st.button("בחר לניתוח 🎯", key=f"btn_{i}"):
+                    st.session_state.selected_job_description = job['snippet']
+                    st.toast("המשרה נטענה בהצלחה לשלב 3!")
+                st.link_button("למשרה המלאה 🔗", job['link'])
 
 st.markdown("---")
 
-# שלב 3: ניתוח והתאמה מבוסס AI
+# שלב 3: ניתוח והתאמה
 st.subheader("📊 שלב 3: ניתוח התאמה ושיפור (AI)")
-job_input = st.text_area("הדביקי כאן את תיאור המשרה שמצאת:", height=150, placeholder="הדביקי את דרישות התפקיד...")
+
+# תיבת הטקסט מקבלת אוטומטית את הערך שנבחר בשלב 2
+job_input = st.text_area(
+    "תיאור המשרה לניתוח:",
+    value=st.session_state.selected_job_description,
+    height=150,
+    placeholder="תיאור המשרה יופיע כאן אוטומטית לאחר שתבחרי משרה למעלה..."
+)
 
 if st.button("🚀 נתח ושפר את קורות החיים שלי", type="primary"):
     if not job_input or not st.session_state.cv_text:
-        st.warning("נא להעלות קורות חיים ולהדביק תיאור משרה.")
+        st.warning("נא לוודא שיש קורות חיים ותיאור משרה.")
     else:
-        with st.spinner("ה-AI מנתח את ההתאמה..."):
-            # פרומפט משופר למניעת שגיאות JSON
-            prompt = f"""
-            Compare the CV text and Job Description. 
-            CV: {st.session_state.cv_text[:2000]}
-            Job: {job_input[:2000]}
-            Return ONLY a valid JSON with: score (0-100), missing_skills (list), improved_sections (list of objects with 'explanation', 'original', 'improved').
-            """
+        with st.spinner("ה-AI מנתח התאמה ומכין המלצות..."):
+            prompt = f"Compare CV and Job. Return JSON only. CV: {st.session_state.cv_text[:2000]} Job: {job_input[:2000]}"
             res = AIService.get_response(prompt)
             if res:
                 st.session_state.analysis_results = res
 
 if st.session_state.analysis_results:
     res = st.session_state.analysis_results
+    st.metric("ציון התאמה", f"{res.get('score', 0)}%")
 
-    # הצגת ציון התאמה בצורה גרפית
-    score = res.get('score', 0)
-    st.metric("ציון התאמה למשרה", f"{score}%")
-    st.progress(score / 100)
-
-    st.write("### 📝 המלצות לשיפור")
+    st.write("### 📝 המלצות שיפור ספציפיות")
     for section in res.get('improved_sections', []):
         with st.expander(f"💡 {section.get('explanation', '')[:60]}..."):
-            st.error(f"**המקור:** {section.get('original', '')}")
+            st.error(f"**במקור:** {section.get('original', '')}")
             st.success(f"**ההצעה שלנו:** {section.get('improved', '')}")
 
     if st.button("📥 הורד קורות חיים משופרים (Word)"):
