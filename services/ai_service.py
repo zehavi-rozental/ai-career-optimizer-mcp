@@ -5,8 +5,8 @@ import streamlit as st
 class AIService:
     @staticmethod
     def analyze_job_match(resume_text, job_description):
-        """גרסה יציבה ללא בדיקות מקדימות למניעת שגיאות 404"""
-        # ניקוי המפתח
+        """ניתוח התאמה מפורט - גרסה יציבה מבוססת קומיט 6475b2c"""
+        # ניקוי המפתח מרווחים או גרשיים מיותרים
         api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
 
         if not api_key:
@@ -16,8 +16,8 @@ class AIService:
         try:
             genai.configure(api_key=api_key)
 
-            # חזרה להגדרה הישירה והפשוטה שעבדה
-            # השרת שלך כרגע מקבל את השמות האלו ללא הקידומת models/ בגרסה היציבה
+            # שימוש ישיר במודל gemini-1.5-flash ללא קידומות מורכבות
+            # זו ההגדרה שעבדה בקומיט היציב שלך
             model = genai.GenerativeModel('gemini-1.5-flash')
 
             prompt = f"""
@@ -54,7 +54,7 @@ class AIService:
             return response.text
 
         except Exception as e:
-            # אם gemini-1.5-flash נכשל, ניסיון אחרון עם gemini-pro הסטנדרטי
+            # גיבוי אחרון בלבד למודל gemini-pro אם flash לא מגיב
             try:
                 model = genai.GenerativeModel('gemini-pro')
                 response = model.generate_content(prompt)
