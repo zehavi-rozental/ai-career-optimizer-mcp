@@ -5,25 +5,10 @@ import streamlit as st
 class AIService:
     @staticmethod
     def get_available_model():
-        """בדוק קודם לקוד איזה מודל זמין, כדי למנוע שגיאת 404"""
-        api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
-        if not api_key:
-            return None
-
-        genai.configure(api_key=api_key)
-        models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.5-pro']
-
-        for model_name in models_to_try:
-            try:
-                model = genai.GenerativeModel(model_name)
-                # בדיקה מהירה אם המודל עובד
-                test_response = model.generate_content("test", generation_config=genai.types.GenerationConfig(max_output_tokens=10))
-                if test_response:
-                    return model_name
-            except:
-                continue
-
-        return 'gemini-pro'  # ברירת מחדל אם כל דבר נכשל
+        """בחירה ישירה של המודל בפורמט שהשרת דורש כדי למנוע 404"""
+        # הוספת הקידומת models/ היא קריטית לגרסה שרצה אצלך
+        # אנחנו ננסה את flash ראשון כי הוא הכי מהיר
+        return 'models/gemini-1.5-flash'
 
     @staticmethod
     def analyze_job_match(resume_text, job_description):
@@ -35,13 +20,14 @@ class AIService:
         try:
             genai.configure(api_key=api_key)
 
-            # בדוק איזה מודל זמין
-            available_model = AIService.get_available_model()
-            if not available_model:
-                st.error("לא ניתן למצוא מודל זמין")
-                return None
+            # שימוש בשם המודל המדויק עם הקידומת
+            model_name = AIService.get_available_model()
 
-            model = genai.GenerativeModel(available_model)
+            # אם ה-flash נכשל בעבר, אפשר לשנות כאן ל-models/gemini-pro
+            try:
+                model = genai.GenerativeModel(model_name)
+            except:
+                model = genai.GenerativeModel('models/gemini-pro')
 
             prompt = f"""
             בתור מומחה גיוס בכיר, בצע ניתוח התאמה ארוך, מפורט ומעמיק ביותר בין קורות החיים למשרה.
@@ -77,5 +63,14 @@ class AIService:
             return response.text
 
         except Exception as e:
-            st.error(f"AI Error: {str(e)}")
+            # אם השגיאה חוזרת, ננסה אוטומטית את המודל השני כגיבוי אחרון
+            if "404" in str(e):
+                try:
+                    model = genai.GenerativeModel('models/gemini-pro')
+                    response = model.generate_content(prompt)
+                    return response.text
+                except:
+                    st.error(f"AI Error: {str(e)}")
+            else:
+                st.error(f"AI Error: {str(e)}")
             return None
