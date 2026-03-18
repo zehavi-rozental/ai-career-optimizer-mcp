@@ -4,27 +4,9 @@ import streamlit as st
 
 class AIService:
     @staticmethod
-    def get_available_model():
-        """זיהוי דינמי של המודל - מה שעבד בקומיט העליון"""
-        try:
-            # רשימת מודלים לניסיון בסדר עדיפות
-            models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
-
-            for m_name in models_to_try:
-                try:
-                    m = genai.GenerativeModel(m_name)
-                    # בדיקה מינימלית אם המודל מגיב
-                    m.generate_content("hi", generation_config={"max_output_tokens": 1})
-                    return m_name
-                except:
-                    continue
-            return 'gemini-1.5-flash'  # ברירת מחדל אחרונה
-        except:
-            return 'gemini-1.5-flash'
-
-    @staticmethod
     def analyze_job_match(resume_text, job_description):
-        """ניתוח התאמה מפורט - מבוסס על הקומיט bd1727c"""
+        """ניתוח התאמה - שחזור הגדרות קומיט אמצעי יציב"""
+        # ניקוי המפתח
         api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
 
         if not api_key:
@@ -34,9 +16,8 @@ class AIService:
         try:
             genai.configure(api_key=api_key)
 
-            # בחירת מודל דינמית כפי שהיה בקומיט bd1727c
-            model_name = AIService.get_available_model()
-            model = genai.GenerativeModel(model_name)
+            # שימוש בשם המודל הישיר ללא קידומות - הפורמט שעבד בקומיט האמצעי
+            model = genai.GenerativeModel('gemini-1.5-flash')
 
             prompt = f"""
             בתור מומחה גיוס בכיר, בצע ניתוח התאמה ארוך, מפורט ומעמיק ביותר בין קורות החיים למשרה.
@@ -72,5 +53,11 @@ class AIService:
             return response.text
 
         except Exception as e:
-            st.error(f"AI Error: {str(e)}")
-            return None
+            # אם gemini-1.5-flash נכשל ב-404, ניסיון אוטומטי ל-gemini-pro
+            try:
+                model = genai.GenerativeModel('gemini-pro')
+                response = model.generate_content(prompt)
+                return response.text
+            except:
+                st.error(f"AI Error: {str(e)}")
+                return None
