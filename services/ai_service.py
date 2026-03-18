@@ -4,30 +4,24 @@ import streamlit as st
 
 class AIService:
     @staticmethod
-    def get_available_model():
-        """בחירה ישירה של המודל בפורמט שהשרת דורש כדי למנוע 404"""
-        # הוספת הקידומת models/ היא קריטית לגרסה שרצה אצלך
-        # אנחנו ננסה את flash ראשון כי הוא הכי מהיר
-        return 'models/gemini-1.5-flash'
-
-    @staticmethod
     def analyze_job_match(resume_text, job_description):
-        """ניתוח התאמה עמוק בין קורות חיים למשרה"""
+        """ניתוח התאמה עמוק ויציב - חזרה לגרסה שעבדה"""
+        # ניקוי מפתח ה-API מסימנים מיותרים
         api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
+
         if not api_key:
             st.error("Missing Gemini API Key in Secrets")
             return None
+
         try:
             genai.configure(api_key=api_key)
 
-            # שימוש בשם המודל המדויק עם הקידומת
-            model_name = AIService.get_available_model()
-
-            # אם ה-flash נכשל בעבר, אפשר לשנות כאן ל-models/gemini-pro
+            # שימוש ישיר במודל gemini-1.5-flash ללא קידומות מורכבות,
+            # במידה וזה נכשל, המערכת תנסה את gemini-pro באופן אוטומטי.
             try:
-                model = genai.GenerativeModel(model_name)
+                model = genai.GenerativeModel('gemini-1.5-flash')
             except:
-                model = genai.GenerativeModel('models/gemini-pro')
+                model = genai.GenerativeModel('gemini-pro')
 
             prompt = f"""
             בתור מומחה גיוס בכיר, בצע ניתוח התאמה ארוך, מפורט ומעמיק ביותר בין קורות החיים למשרה.
@@ -63,14 +57,14 @@ class AIService:
             return response.text
 
         except Exception as e:
-            # אם השגיאה חוזרת, ננסה אוטומטית את המודל השני כגיבוי אחרון
+            # אם יש שגיאת 404, זה בדרך כלל אומר שה-API דורש את הקידומת 'models/'
             if "404" in str(e):
                 try:
-                    model = genai.GenerativeModel('models/gemini-pro')
+                    model = genai.GenerativeModel('models/gemini-1.5-flash')
                     response = model.generate_content(prompt)
                     return response.text
-                except:
-                    st.error(f"AI Error: {str(e)}")
+                except Exception as final_e:
+                    st.error(f"AI Error (404): {str(final_e)}")
             else:
                 st.error(f"AI Error: {str(e)}")
             return None
