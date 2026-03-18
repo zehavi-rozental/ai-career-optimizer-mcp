@@ -8,15 +8,22 @@ class GoogleSearchService:
         api_key = st.secrets.get("SERPER_API_KEY", "").strip()
         url = "https://google.serper.dev/search"
 
-        # שאילתה "גאונית" שמסננת דפי אינדקס ריקים ומחפשת תיאור מלא
-        enhanced_query = f'"{query}" משרה מלאה (AllJobs OR Jobinfo OR LinkedIn) "תיאור משרה"'
+        # שאילתה שמחייבת הופעה של "תיאור משרה" ומסננת דפי בית של אתרים
+        enhanced_query = f'"{query}" "תיאור משרה" (site:alljobs.co.il OR site:drushim.co.il OR site:linkedin.com/jobs)'
 
-        payload = {"q": enhanced_query, "gl": "il", "hl": "iw", "num": 10}
+        payload = {
+            "q": enhanced_query,
+            "gl": "il",
+            "hl": "iw",
+            "num": 10,
+            "autocorrect": True
+        }
         headers = {'X-API-KEY': api_key, 'Content-Type': 'application/json'}
 
-        response = requests.post(url, headers=headers, json=payload)
-        results = response.json().get('organic', [])
-
-        # סינון: רק תוצאות שיש להן תוכן משמעותי
-        valid_results = [r for r in results if len(r.get('snippet', '')) > 50]
-        return valid_results
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=15)
+            results = response.json().get('organic', [])
+            # סינון תוצאות קצרות מדי שאינן משרות אמיתיות
+            return [r for r in results if len(r.get('snippet', '')) > 60]
+        except:
+            return []
