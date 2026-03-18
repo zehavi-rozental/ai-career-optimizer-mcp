@@ -1,90 +1,98 @@
 import streamlit as st
-from services.ai_service import AIService
 from services.google_search import GoogleSearchService
-from utils.pdf_processor import extract_text_from_pdf
-from docx import Document
-from io import BytesIO
-import re
+from services.ai_service import AIService
+import os
 
-st.set_page_config(page_title="Career Optimizer Pro", page_icon="🎯", layout="wide")
+# הגדרת תצורת דף
+st.set_page_config(page_title="AI Career Optimizer", page_icon="🚀", layout="wide")
 
-if "cv_text" not in st.session_state: st.session_state.cv_text = ""
-if "search_results" not in st.session_state: st.session_state.search_results = []
-if "selected_job_description" not in st.session_state: st.session_state.selected_job_description = ""
-if "analysis_results" not in st.session_state: st.session_state.analysis_results = None
+# אתחול Session State לניהול נתונים בין הרצות
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 1
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = []
+if 'selected_job_description' not in st.session_state:
+    st.session_state.selected_job_description = ""
+if 'search_query' not in st.session_state:
+    st.session_state.search_query = ""
 
-st.title("🎯 AI Career Optimizer Pro")
+st.title("🚀 AI Career Optimizer")
+st.markdown("### שלב 1: העלאת קורות חיים")
+resume_text = st.text_area("הדביקי כאן את קורות החיים שלך:", height=200)
 
-# שלב 1: קורות חיים
-with st.sidebar:
-    st.header("📄 שלב 1: קורות חיים")
-    if not st.session_state.cv_text:
-        pdf_file = st.file_uploader("העלי קורות חיים (PDF)", type=['pdf'])
-        if pdf_file:
-            st.session_state.cv_text = extract_text_from_pdf(pdf_file)
-            st.rerun()
-    else:
-        st.success("✅ קורות חיים טעונים")
-        if st.button("החלף קובץ"):
-            st.session_state.cv_text = ""
-            st.rerun()
+st.divider()
 
-# שלב 2: חיפוש עם וילונות (Expanders)
-st.subheader("🔍 שלב 2: פיד משרות מותאם")
-query = st.text_input("איזה תפקיד את מחפשת?", placeholder="למשל: Junior Developer")
+st.markdown("### שלב 2: חיפוש משרות ספציפיות")
+col_search, col_btn = st.columns([4, 1])
+with col_search:
+    job_query = st.text_input("איזו משרה את מחפשת? (למשל: Fullstack Developer Junior)",
+                              value=st.session_state.search_query)
+with col_btn:
+    st.write(" ")  # מרווח לעיצוב
+    if st.button("חפש משרות", use_container_width=True):
+        st.session_state.current_page = 1
+        st.session_state.search_query = job_query
+        with st.spinner("מחפש משרות רלוונטיות..."):
+            results = GoogleSearchService.search_jobs(job_query, page=1)
+            st.session_state.search_results = results
 
-if st.button("מצא לי משרות רלוונטיות", type="primary"):
-    with st.spinner("סורק משרות מפורטות..."):
-        st.session_state.search_results = GoogleSearchService.search_jobs(query)
-
+# הצגת תוצאות החיפוש
 if st.session_state.search_results:
-    st.write(f"### נמצאו {len(st.session_state.search_results)} משרות:")
-    for i, job in enumerate(st.session_state.search_results[:10]):
+    st.subheader(f"🔍 תוצאות חיפוש (עמוד {st.session_state.current_page})")
+
+    for i, job in enumerate(st.session_state.search_results):
         with st.container(border=True):
-            # כותרת המשרה בחוץ
-            st.markdown(f"### {job.get('title')}")
+            col_info, col_action = st.columns([4, 1])
+            with col_info:
+                st.markdown(f"#### {job.get('title')}")
+                st.caption(f"מקור: {job.get('link')}")
+                # הצגת התקציר הראשוני מגוגל
+                st.write(job.get('snippet'))
 
-            # ה"וילון" שנפתח עם התיאור המלא
-            with st.expander("📖 קראי את תיאור המשרה המלא"):
-                full_desc = job.get('snippet', 'אין תיאור זמין')
-                st.write(full_desc)
-                st.link_button("🔗 למקור המשרה", job.get('link', '#'))
+            with col_action:
+                if st.button(f"בחר לניתוח 🎯", key=f"select_{i}"):
+                    with st.spinner("שואב תיאור משרה מלא מהאתר..."):
+                        # שאיבת התוכן המלא מהקישור
+                        full_text = GoogleSearchService.get_full_job_content(job.get('link'))
+                        st.session_state.selected_job_description = full_text
+                        st.toast("התיאور המלא נטען בהצלחה!")
 
-            # כפתור בחירה לניתוח
-            if st.button("בחר לניתוח 🎯", key=f"job_btn_{i}"):
-                st.session_state.selected_job_description = job.get('snippet', '')
-                st.toast("המשרה נבחרה!")
+    # מנגנון דפדוף (Pagination)
+    col_prev, col_page, col_next = st.columns([1, 2, 1])
+    with col_prev:
+        if st.session_state.current_page > 1:
+            if st.button("⬅️ 10 הקודמות"):
+                st.session_state.current_page -= 1
+                st.session_state.search_results = GoogleSearchService.search_jobs(
+                    st.session_state.search_query, page=st.session_state.current_page
+                )
+                st.rerun()
+    with col_page:
+        st.write(f"<center>עמוד {st.session_state.current_page}</center>", unsafe_allow_html=True)
+    with col_next:
+        if st.button("10 הבאות ➡️"):
+            st.session_state.current_page += 1
+            st.session_state.search_results = GoogleSearchService.search_jobs(
+                st.session_state.search_query, page=st.session_state.current_page
+            )
+            st.rerun()
 
-st.markdown("---")
+st.divider()
 
-# שלב 3: ניתוח והצגת תוצאות
-st.subheader("📊 שלב 3: ניתוח התאמה")
-job_input = st.text_area("תיאור המשרה שנבחרה (ניתן לערוך):",
-                         value=st.session_state.selected_job_description,
-                         height=250)
+st.markdown("### שלב 3: ניתוח התאמה ושיפור")
+# תיבת הטקסט מתעדכנת אוטומטית כשבוחרים משרה
+job_desc_input = st.text_area(
+    "תיאור המשרה (כאן יופיע התיאור המלא שיישאב):",
+    value=st.session_state.selected_job_description,
+    height=300
+)
 
-if st.button("🚀 נתחי ושפרי בירוק", type="primary"):
-    if job_input and st.session_state.cv_text:
-        with st.spinner("ה-AI מנתח לעומק..."):
-            st.session_state.analysis_results = AIService.analyze_job_match(st.session_state.cv_text, job_input)
-
-if st.session_state.analysis_results:
-    # הצגת ציון ויזואלי (Gauge)
-    score_match = re.search(r"SCORE:\s*(\d+)", st.session_state.analysis_results)
-    if score_match:
-        score = int(score_match.group(1))
-        st.metric("ציון התאמה", f"{score}%")
-        st.progress(score / 100)
-
-    st.markdown("---")
-    # הצגת הניתוח עם תמיכה ב-HTML לצבע הירוק
-    st.markdown(st.session_state.analysis_results, unsafe_allow_html=True)
-
-    # ייצוא ל-Word
-    doc = Document()
-    doc.add_heading('דוח ניתוח משרה', 0)
-    clean_text = re.sub('<[^<]+?>', '', st.session_state.analysis_results)
-    doc.add_paragraph(clean_text)
-    bio = BytesIO()
-    doc.save(bio)
-    st.download_button("📥 הורדי כ-Word", data=bio.getvalue(), file_name="analysis.docx")
+if st.button("נתחי התאמה ושפרי קורות חיים 🚀", type="primary"):
+    if not resume_text or not job_desc_input:
+        st.error("אנא וודאי שהזנת קורות חיים ובחרת משרה (או הדבקת תיאור).")
+    else:
+        with st.spinner("מנתח לעומק... זה עשוי לקחת כמה שניות"):
+            analysis = AIService.analyze_job_match(resume_text, job_desc_input)
+            if analysis:
+                st.markdown("---")
+                st.markdown(analysis, unsafe_allow_html=True)
