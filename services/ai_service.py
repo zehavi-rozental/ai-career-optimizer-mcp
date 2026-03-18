@@ -5,56 +5,49 @@ import streamlit as st
 class AIService:
     @staticmethod
     def analyze_job_match(resume_text, job_description):
-        # ניקוי מוחלט של המפתח למניעת שגיאות 400
         api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
-
         if not api_key:
-            st.error("Missing Gemini API Key in Secrets")
+            st.error("Missing Gemini API Key")
             return None
 
         try:
             genai.configure(api_key=api_key)
 
-            # השינוי הגאוני: מעבר ל-gemini-pro ללא קידומת models/
-            # זה המודל הכי יציב שיפתור את שגיאת ה-404
-            model = genai.GenerativeModel('gemini-pro')
+            # מציאת המודל הזמין ביותר בחשבון שלך באופן אוטומטי
+            available_models = [m.name for m in genai.list_models() if
+                                'generateContent' in m.supported_generation_methods]
 
-            # פרומפט משופר לניתוח ארוך מאוד (3000 טוקנים)
+            # עדיפות ל-1.5 פלאש, אחר כך פרו, ואז מה שיש
+            selected_model = None
+            for model_name in ['models/gemini-1.5-flash', 'models/gemini-pro', 'models/gemini-1.0-pro']:
+                if model_name in available_models:
+                    selected_model = model_name
+                    break
+
+            if not selected_model:
+                selected_model = available_models[0]  # פתרון אחרון: קח את הראשון שזמין
+
+            model = genai.GenerativeModel(selected_model)
+
             prompt = f"""
-            בתור מומחה גיוס טכנולוגי בכיר, בצעי ניתוח התאמה ארוך, מעמיק ומפורט ביותר.
-            אל תסתפקי בנקודות קצרות - הסבירי כל סעיף בפירוט רב (מינימום 2-3 פסקאות לכל פרק).
+            בתור מומחה גיוס, בצע ניתוח התאמה ארוך ומפורט מאוד (מינימום 3 פסקאות לכל חלק).
+            תיאור משרה: {job_description}
+            קורות חיים: {resume_text}
 
-            תיאור המשרה המלא: {job_description}
-            קורות החיים: {resume_text}
-
-            מבנה התשובה הנדרש (בעברית):
-            SCORE: [מספר בין 0 ל-100 בלבד]
-
-            ### 📊 ניתוח התאמה אסטרטגי ומפורט
-            [כאן כתבי הסבר ארוך ומפורט על הקשר בין הניסיון למשרה]
-
-            ### ✅ נקודות חוזק מרכזיות (בהרחבה)
-            [פירוט מעמיק של לפחות 3 נקודות והסבר למה הן קריטיות למעסיק]
-
-            ### ⚠️ פערים וחסמים שדורשים התייחסות
-            [פירוט של מה חסר ואיך זה משפיע על המועמדות]
-
-            ### ✍️ המלצות מעשיות לשיפור קורות החיים (בירוק)
-            חשוב: עטפי כל ביטוי או מילה טכנית שמומלץ להוסיף בתגית הבאה כדי שיוצגו בירוק:
-            <span style='color:#2ecc71; font-weight:bold;'>הביטוי להוספה</span>
+            מבנה תשובה:
+            SCORE: [מספר]
+            ### 📊 ניתוח אסטרטגי מורחב
+            ### ✅ נקודות חוזק (מפורט)
+            ### ⚠️ פערים
+            ### ✍️ המלצות לשיפור (עטפי ביטויים ב- <span style='color:#2ecc71; font-weight:bold;'>ביטוי</span>)
             """
 
-            # הגדרות ליצירת טקסט עשיר ומפורט
             response = model.generate_content(
                 prompt,
-                generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=3000,
-                    temperature=0.8
-                )
+                generation_config={"max_output_tokens": 3000, "temperature": 0.7}
             )
             return response.text
 
         except Exception as e:
-            # אם גם זה נכשל, נציג את השגיאה המדויקת לתיקון
-            st.error(f"AI Error: {str(e)}")
+            st.error(f"שגיאת מערכת: {str(e)}")
             return None
