@@ -4,9 +4,27 @@ import streamlit as st
 
 class AIService:
     @staticmethod
+    def get_available_model():
+        """זיהוי דינמי של המודל - מה שעבד בקומיט העליון"""
+        try:
+            # רשימת מודלים לניסיון בסדר עדיפות
+            models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
+
+            for m_name in models_to_try:
+                try:
+                    m = genai.GenerativeModel(m_name)
+                    # בדיקה מינימלית אם המודל מגיב
+                    m.generate_content("hi", generation_config={"max_output_tokens": 1})
+                    return m_name
+                except:
+                    continue
+            return 'gemini-1.5-flash'  # ברירת מחדל אחרונה
+        except:
+            return 'gemini-1.5-flash'
+
+    @staticmethod
     def analyze_job_match(resume_text, job_description):
-        """ניתוח התאמה מפורט - גרסה יציבה מבוססת קומיט 6475b2c"""
-        # ניקוי המפתח מרווחים או גרשיים מיותרים
+        """ניתוח התאמה מפורט - מבוסס על הקומיט bd1727c"""
         api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
 
         if not api_key:
@@ -16,9 +34,9 @@ class AIService:
         try:
             genai.configure(api_key=api_key)
 
-            # שימוש ישיר במודל gemini-1.5-flash ללא קידומות מורכבות
-            # זו ההגדרה שעבדה בקומיט היציב שלך
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # בחירת מודל דינמית כפי שהיה בקומיט bd1727c
+            model_name = AIService.get_available_model()
+            model = genai.GenerativeModel(model_name)
 
             prompt = f"""
             בתור מומחה גיוס בכיר, בצע ניתוח התאמה ארוך, מפורט ומעמיק ביותר בין קורות החיים למשרה.
@@ -54,11 +72,5 @@ class AIService:
             return response.text
 
         except Exception as e:
-            # גיבוי אחרון בלבד למודל gemini-pro אם flash לא מגיב
-            try:
-                model = genai.GenerativeModel('gemini-pro')
-                response = model.generate_content(prompt)
-                return response.text
-            except:
-                st.error(f"AI Error: {str(e)}")
-                return None
+            st.error(f"AI Error: {str(e)}")
+            return None
