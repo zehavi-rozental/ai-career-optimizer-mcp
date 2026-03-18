@@ -4,9 +4,32 @@ import streamlit as st
 
 class AIService:
     @staticmethod
+    def get_best_model():
+        """מזהה דינמית את המודל הכי טוב שזמין בחשבון שלך"""
+        try:
+            # משיכת רשימת המודלים שגוגל מאשרת לך להשתמש בהם
+            available_models = [m.name for m in genai.list_models() if
+                                'generateContent' in m.supported_generation_methods]
+
+            # עדיפות 1: Flash (מהיר וחדש)
+            for m in available_models:
+                if 'gemini-1.5-flash' in m:
+                    return m
+
+            # עדיפות 2: Pro (יציב)
+            for m in available_models:
+                if 'gemini-pro' in m:
+                    return m
+
+            # אם לא מצאנו כלום, נחזיר את הראשון ברשימה
+            return available_models[0] if available_models else 'gemini-pro'
+        except Exception:
+            # גיבוי במקרה של תקלה בתקשורת
+            return 'gemini-pro'
+
+    @staticmethod
     def analyze_job_match(resume_text, job_description):
-        """ניתוח התאמה - שחזור הגדרות קומיט אמצעי יציב"""
-        # ניקוי המפתח
+        """ניתוח התאמה מפורט עם זיהוי מודל אוטומטי"""
         api_key = st.secrets.get("GEMINI_API_KEY", "").strip().replace('"', '').replace("'", "")
 
         if not api_key:
@@ -16,8 +39,9 @@ class AIService:
         try:
             genai.configure(api_key=api_key)
 
-            # שימוש בשם המודל הישיר ללא קידומות - הפורמט שעבד בקומיט האמצעי
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # זיהוי המודל בצורה דינמית מהרשימה של גוגל
+            model_name = AIService.get_best_model()
+            model = genai.GenerativeModel(model_name)
 
             prompt = f"""
             בתור מומחה גיוס בכיר, בצע ניתוח התאמה ארוך, מפורט ומעמיק ביותר בין קורות החיים למשרה.
@@ -53,11 +77,5 @@ class AIService:
             return response.text
 
         except Exception as e:
-            # אם gemini-1.5-flash נכשל ב-404, ניסיון אוטומטי ל-gemini-pro
-            try:
-                model = genai.GenerativeModel('gemini-pro')
-                response = model.generate_content(prompt)
-                return response.text
-            except:
-                st.error(f"AI Error: {str(e)}")
-                return None
+            st.error(f"AI Error: {str(e)}")
+            return None
