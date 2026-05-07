@@ -1,5 +1,9 @@
 import py_compile
 import sys
+import os
+
+# עדכון נתיב לקבצים בדירקטוריה ההורית
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 files = [
     'services/google_search.py',

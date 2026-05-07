@@ -1,5 +1,11 @@
+import sys
+import os
 import requests
 import urllib3
+
+# עדכון נתיב לקבצים בדירקטוריה ההורית
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Disable all SSL warnings
 urllib3.disable_warnings()

@@ -8,8 +8,12 @@ import toml
 import requests
 import certifi
 
+# עדכון נתיב לקבצים בדירקטוריה ההורית
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 print("=" * 70)
-print("🔍 בדיקה מלאה - API Keys ו-Connections")
+print("🔍 בדיקה מלאה - API Keys וctions")
 print("=" * 70)
 
 # Step 1: Check secrets file

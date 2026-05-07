@@ -1,6 +1,12 @@
+import sys
+import os
 import ssl
 import certifi
 import requests
+
+# עדכון נתיב לקבצים בדירקטוריה ההורית
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 print("Fixing SSL Certificate Issue...")
 print(f"CA Bundle location: {certifi.where()}")

@@ -5,6 +5,10 @@ Final validation before running Streamlit
 import sys
 import os
 
+# עדכון נתיב לקבצים בדירקטוריה ההורית
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 print("=" * 60)
 print("✅ FINAL VALIDATION - AI Career Optimizer")
 print("=" * 60)
